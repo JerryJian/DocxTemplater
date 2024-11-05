@@ -198,6 +198,7 @@ namespace DocxTemplater.Test
         [TestCase("foo<br>Test", "<html>foo<br>Test</html>")]
         public void HtmlIsAlwaysEnclosedWithHtmlTags(string html, string expexted)
         {
+            Environment.SetEnvironmentVariable("DOCX_TEMPLATER_VISUAL_TESTING", "true");
             using var memStream = new MemoryStream();
             using var wpDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document);
             MainDocumentPart mainPart = wpDocument.AddMainDocumentPart();
@@ -554,9 +555,19 @@ namespace DocxTemplater.Test
             yield return new TestCaseData(":f(d)", new CultureInfo("en-us"), new DateTime(2024, 11, 1, 20, 22, 33)).Returns("11/1/2024");
             yield return new TestCaseData(":FORMAT(D)", new CultureInfo("en-us"), new DateTime(2024, 11, 1, 20, 22, 33)).Returns("Friday, November 1, 2024");
             yield return new TestCaseData(":F(yyyy MM dd - HH mm ss)", new CultureInfo("en-us"), new DateTime(2024, 11, 1, 20, 22, 33)).Returns("2024 11 01 - 20 22 33");
-            yield return new TestCaseData(":F(n)", new CultureInfo("en-us"), 50000.45).Returns("50,000.450");
+            yield return new TestCaseData(":F(n)", new CultureInfo("en-us"), 50000.45)
+#if NET6_0_OR_GREATER
+                .Returns("50,000.450");
+#else
+                .Returns("50,000.45");
+#endif
             yield return new TestCaseData(":F(c)", new CultureInfo("en-us"), 50000.45).Returns("$50,000.45");
-            yield return new TestCaseData(":F(n)", new CultureInfo("de"), 50000.45).Returns("50.000,450");
+            yield return new TestCaseData(":F(n)", new CultureInfo("de"), 50000.45)
+#if NET6_0_OR_GREATER
+                .Returns("50.000,450");
+#else
+                .Returns("50.000,45");
+#endif
             yield return new TestCaseData(":F(c)", new CultureInfo("de-ch"), 50000.45).Returns("CHF 50’000.45");
 
         }
@@ -875,7 +886,13 @@ namespace DocxTemplater.Test
                 }
             };
             docTemplate.BindModel("ds", model);
-            docTemplate.BindModel("RowType", Enum.GetValues<RowType>().ToDictionary(x => x.ToString(), x => (int)x));
+            docTemplate.BindModel("RowType",
+#if NET6_0_OR_GREATER
+                Enum.GetValues<RowType>().
+#else
+                Enum.GetValues(typeof(RowType)).OfType<RowType>().
+#endif
+                ToDictionary(x => x.ToString(), x => (int)x));
             var result = docTemplate.Process();
             docTemplate.Validate();
             result.Position = 0;

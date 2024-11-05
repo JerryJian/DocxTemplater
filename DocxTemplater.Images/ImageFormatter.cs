@@ -2,8 +2,13 @@
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DocxTemplater.Formatter;
+#if NET6_0_OR_GREATER
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Metadata;
+#else
+using System.Drawing;
+using System.Drawing.Imaging;
+#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,7 +16,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
-using PIC = DocumentFormat.OpenXml.Drawing.Pictures; // http://schemas.openxmlformats.org/drawingml/2006/picture"
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+// http://schemas.openxmlformats.org/drawingml/2006/picture"
 
 namespace DocxTemplater.Images
 {
@@ -50,9 +56,14 @@ namespace DocxTemplater.Images
 
                     if (!TryGetImageIdFromCache(imageBytes, openXmlPartRootElement, out var imageInfo))
                     {
-                        using var image = Image.Load(imageBytes);
+                        using var image =
+#if NET6_0_OR_GREATER
+                            Image.Load(imageBytes);
+#else
+                            Image.FromStream(new MemoryStream(imageBytes));
+#endif
                         string imagePartRelId = null;
-                        var imagePartType = DetectPartTypeInfo(context.Placeholder, image.Metadata);
+                        var imagePartType = DetectPartTypeInfo(context.Placeholder, image);
                         if (openXmlPartRootElement.OpenXmlPart is HeaderPart headerPart)
                         {
                             imagePartRelId = CreateImagePart(headerPart, imageBytes, imagePartType);
@@ -86,7 +97,10 @@ namespace DocxTemplater.Images
                     throw new OpenXmlTemplateException("Could not find root to insert image");
                 }
             }
-            catch (Exception e) when (e is InvalidImageContentException or UnknownImageFormatException)
+            catch (Exception e)
+#if NET6_0_OR_GREATER
+            when (e is InvalidImageContentException or UnknownImageFormatException)
+#endif
             {
                 throw new OpenXmlTemplateException("Could not detect image format", e);
             }
@@ -102,9 +116,10 @@ namespace DocxTemplater.Images
             return m_imagePartRelIdCache.TryGetValue(imageBytes, out imageInfo);
         }
 
-        private static PartTypeInfo DetectPartTypeInfo(string modelPath, ImageMetadata imageMetadata)
+#if NET6_0_OR_GREATER
+        private static PartTypeInfo DetectPartTypeInfo(string modelPath, Image image)
         {
-            return imageMetadata switch
+            return image.Metadata switch
             {
                 { DecodedImageFormat.Name: "TIFF" } => ImagePartType.Tiff,
                 { DecodedImageFormat.Name: "BMP" } => ImagePartType.Bmp,
@@ -114,6 +129,35 @@ namespace DocxTemplater.Images
                 _ => throw new OpenXmlTemplateException($"Could not detect image format for image in {modelPath}")
             };
         }
+#else
+        private static PartTypeInfo DetectPartTypeInfo(string modelPath, Image image)
+        {
+            if (ImageFormat.Tiff.Equals(image.RawFormat))
+            {
+                return ImagePartType.Tiff;
+            }
+            else if (ImageFormat.Bmp.Equals(image.RawFormat))
+            {
+                return ImagePartType.Bmp;
+            }
+            else if (ImageFormat.Gif.Equals(image.RawFormat))
+            {
+                return ImagePartType.Gif;
+            }
+            else if (ImageFormat.Jpeg.Equals(image.RawFormat))
+            {
+                return ImagePartType.Jpeg;
+            }
+            else if (ImageFormat.Png.Equals(image.RawFormat))
+            {
+                return ImagePartType.Png;
+            }
+            else
+            {
+                throw new OpenXmlTemplateException($"Could not detect image format for image in {modelPath}");
+            }
+        }
+#endif
 
         /// <summary>
         ///     If the image is contained in a "wsp" element (TextBox), the text box is used as a container for the image.

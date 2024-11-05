@@ -16,9 +16,14 @@ namespace DocxTemplater
     {
         public static bool IsChildOf(this OpenXmlElement element, OpenXmlElement parent)
         {
+#if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(element, nameof(element));
             ArgumentNullException.ThrowIfNull(element);
             ArgumentNullException.ThrowIfNull(parent);
+#else
+            InternalExtensions.ThrowIfNull(element, nameof(element));
+            InternalExtensions.ThrowIfNull(parent, nameof(parent));
+#endif
             var current = element.Parent;
             while (current != null)
             {
@@ -122,8 +127,13 @@ namespace DocxTemplater
 
         public static OpenXmlElement FindCommonParent(this OpenXmlElement element, OpenXmlElement otherElement)
         {
+#if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(element);
             ArgumentNullException.ThrowIfNull(otherElement);
+#else
+            InternalExtensions.ThrowIfNull(element, nameof(element));
+            InternalExtensions.ThrowIfNull(otherElement, nameof(otherElement));
+#endif
             var current = element.Parent;
             while (current != null)
             {

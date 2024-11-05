@@ -15,7 +15,47 @@ namespace DocxTemplater.Markdown
 {
     internal sealed class MarkdownToOpenXmlRenderer : RendererBase
     {
+#if NET6_0_OR_GREATER
         private sealed record Format(bool Bold, bool Italic, string Style);
+#else
+        private sealed class Format : IEquatable<Format>
+        {
+            public Format(bool bold, bool italic, string style)
+            {
+                Bold = bold;
+                Italic = italic;
+                Style = style;
+            }
+
+            public bool Bold { get; }
+
+            public bool Italic { get; }
+
+            public string Style { get; }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as Format);
+            }
+
+            public bool Equals(Format other)
+            {
+                return other is not null &&
+                       Bold == other.Bold &&
+                       Italic == other.Italic &&
+                       Style == other.Style;
+            }
+
+            public override int GetHashCode()
+            {
+                var hashCode = -868858367;
+                hashCode = hashCode * -1521134295 + Bold.GetHashCode();
+                hashCode = hashCode * -1521134295 + Italic.GetHashCode();
+                hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(Style);
+                return hashCode;
+            }
+        }
+#endif
 
         private readonly Stack<Format> m_formatStack = new();
         private OpenXmlCompositeElement m_parentElement;

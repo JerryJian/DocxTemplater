@@ -28,7 +28,11 @@ namespace DocxTemplater
         private DocxTemplate(Stream docXStream, ProcessSettings settings, ModelLookup modelLookup)
         : base(settings, modelLookup, new VariableReplacer(modelLookup, settings), new ScriptCompiler(modelLookup, settings))
         {
+#if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(docXStream);
+#else
+            InternalExtensions.ThrowIfNull(docXStream, nameof(docXStream));
+#endif
             m_stream = new MemoryStream();
             docXStream.CopyTo(m_stream);
             m_stream.Position = 0;

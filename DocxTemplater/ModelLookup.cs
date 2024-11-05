@@ -140,7 +140,12 @@ namespace DocxTemplater
                 // search the longest path in the lookup
                 for (; partIndex > 0; partIndex--)
                 {
-                    modelRootPath = string.Join('.', parts[..partIndex]);
+                    modelRootPath =
+#if NET6_0_OR_GREATER
+                        string.Join('.', parts[..partIndex]);
+#else
+                        string.Join(".", parts, 0, partIndex);
+#endif
                     if (scope.TryGetValue(modelRootPath, out var model))
                     {
                         return model;

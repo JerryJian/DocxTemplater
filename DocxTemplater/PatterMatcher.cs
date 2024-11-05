@@ -83,7 +83,11 @@ namespace DocxTemplater
                 else if (match.Groups["varname"].Success)
                 {
                     var argGroup = match.Groups["arg"];
-                    var arguments = argGroup.Success ? argGroup.Captures.Select(x => x.Value?.Replace("\\'", "'")).ToArray() : Array.Empty<string>();
+                    var arguments = argGroup.Success ? argGroup.Captures
+#if NET40_OR_GREATER
+                        .OfType<Capture>()
+#endif
+                        .Select(x => x.Value?.Replace("\\'", "'")).ToArray() : Array.Empty<string>();
                     result.Add(new PatternMatch(match, PatternType.Variable, null, null, match.Groups["varname"].Value, match.Groups["formatter"].Value, arguments, match.Index, match.Length));
                 }
                 else

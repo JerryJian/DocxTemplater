@@ -76,7 +76,7 @@ namespace DocxTemplater.Formatter
         {
             var alternativeFormatImportPart = parent.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
             using var memoryStream = new MemoryStream();
-            using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8);
+            using var streamWriter = new StreamWriter(memoryStream, new UTF8Encoding(true));
             streamWriter.Write(html);
             streamWriter.Flush();
             memoryStream.Position = 0;

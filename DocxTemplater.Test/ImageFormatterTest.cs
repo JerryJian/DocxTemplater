@@ -2,8 +2,13 @@
 using DocumentFormat.OpenXml.Wordprocessing;
 using DocumentFormat.OpenXml;
 using DocxTemplater.Images;
+#if NET6_0_OR_GREATER
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+#else
+using System.Drawing;
+using System.Drawing.Imaging;
+#endif
 
 namespace DocxTemplater.Test
 {
@@ -17,11 +22,26 @@ namespace DocxTemplater.Test
         public void ProcessTemplateWithDifferentImageTypes(string extension)
         {
             var imageBytes = File.ReadAllBytes("Resources/testImage.jpg");
+#if NET6_0_OR_GREATER
             var img = Image.Load(imageBytes);
             Assert.That(img.Configuration.ImageFormatsManager.TryFindFormatByFileExtension(extension, out var format));
             var memStream = new MemoryStream();
             img.Save(memStream, format);
             imageBytes = memStream.ToArray();
+#else
+            var img = Image.FromStream(new MemoryStream(imageBytes));
+            var memStream = new MemoryStream();
+            img.Save(memStream, extension switch
+            {
+                "jpg" => ImageFormat.Jpeg,
+                "tiff" => ImageFormat.Tiff,
+                "png" => ImageFormat.Png,
+                "bmp" => ImageFormat.Bmp,
+                "gif" => ImageFormat.Gif,
+                _ => ImageFormat.Jpeg,
+            });
+            imageBytes = memStream.ToArray();
+#endif
 
             using var fileStream = File.OpenRead("Resources/ImageFormatterTest.docx");
             var docTemplate = new DocxTemplate(fileStream);
@@ -43,12 +63,21 @@ namespace DocxTemplater.Test
             var imageBytes = File.ReadAllBytes("Resources/testImage.jpg");
 
             // change the size to be bigger than the page
+#if NET6_0_OR_GREATER
             var img = Image.Load(imageBytes);
             img.Mutate(x => x.Resize(img.Width * 10, img.Height * 10));
 
             var bigImgStream = new MemoryStream();
             img.SaveAsJpeg(bigImgStream);
             imageBytes = bigImgStream.ToArray();
+#else
+            var img = Image.FromStream(new MemoryStream(imageBytes));
+            var large = img.GetThumbnailImage(img.Width * 10, img.Height * 10, () => true, IntPtr.Zero);
+
+            var bigImgStream = new MemoryStream();
+            img.Save(bigImgStream, ImageFormat.Jpeg);
+            imageBytes = bigImgStream.ToArray();
+#endif
 
             using var memStream = new MemoryStream();
             using var wpDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document);
